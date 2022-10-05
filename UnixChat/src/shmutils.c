@@ -6,7 +6,7 @@
 #include <sys/shm.h>
 #include "shmutils.h"
 
-int shared_memory_getter()
+int users_shared_memory_getter()
 {
     int id;
     // Получение доступа БЕЗ СОЗДАНИЯ
@@ -23,6 +23,8 @@ int shared_memory_getter()
          * 
         * ===============================================
         */
+       printf("create shared memory\n");
+
         if ((id = shmget(USERS_SHARED_MEMORY_KEY, (MAX_USERS + 1) * sizeof(int), PERMS | IPC_CREAT)) < 0)
         {
             // При ошибке возвращаем -1
@@ -47,3 +49,38 @@ int shared_memory_getter()
     }
     return id;
 }
+
+int msg_shared_memory_getter()
+{
+    return shmget(MSG_SHARED_MEMORY_KEY, MAX_MSGLEN * sizeof(char), PERMS | IPC_CREAT) < 0;
+}
+
+int user_exit(int users_shared_memory_id, int *users, int user_index, int msg_shared_memory_id, char *msg)
+{
+    users[0]--;
+    users[user_index] = -1;
+    printf("users online: %d\n", users[0]);
+    if (users[0]==0)
+    {
+        shmdt(users);
+        shmdt(msg);
+        int close_memory = shmctl (users_shared_memory_id, IPC_RMID, (struct shmid_ds *) 0) < 0 &&
+                            shmctl(msg_shared_memory_id, IPC_RMID, (struct shmid_ds *) 0) < 0;
+        if (close_memory)
+        {
+            return CLOSE_SHARED_MEMORY_ERROR;
+        }
+        else
+        {
+            return CLOSE_SHARED_MEMORY_SUCCESS;
+        }
+    }
+    else
+    {
+        shmdt(users);
+        shmdt(msg);
+    }
+    return DETACH_SUCCESS;
+}
+
+

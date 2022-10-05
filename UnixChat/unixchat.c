@@ -11,7 +11,12 @@ int this_user_index;
 int users_shared_memory_id;
 int *users;
 
+int msg_shared_memory_id;
+char *msg;
+
 void on_keyboard_interrupt(int sig);
+
+void on_message_received(int sig);
 
 
 
@@ -24,16 +29,29 @@ int main(int argc, char *argv[])
 
      // Обработка закрытия через Ctrl-C
      signal(SIGINT, on_keyboard_interrupt);
+
+     // Обработка закрытия через Ctrl-Z
+     signal(SIGTSTP, on_keyboard_interrupt);
+
      
-     users_shared_memory_id = shared_memory_getter();
+     // Подключение к разделяемой памяти с пользователями
+     users_shared_memory_id = users_shared_memory_getter();
      if (users_shared_memory_id == -1 || (users = (int *) shmat(users_shared_memory_id, 0, 0)) == NULL)
      {
-          printf("couldn't get shared memory");
+          printf("couldn't get shared memory\n");
+          exit(1);
+     }
+
+     // Подключение к разделяемой памяти с сообщениями
+     msg_shared_memory_id = msg_shared_memory_getter();
+     if (msg_shared_memory_id == -1 || (msg = (char *)shmat(msg_shared_memory_id, 0, 0)) == NULL)
+     {
+          printf("couldn't get shared memory\n");
           exit(1);
      }
 
      users[0]++;
-     printf("ALL USERS: %d\n", users[0]);
+     printf("users online: %d\n", users[0]);
 
      while (1)
      {
@@ -41,34 +59,24 @@ int main(int argc, char *argv[])
      }
 }
 
-/*
-* ===============================================
- *   ** ОТКЛЮЧЕНИЕ ПОЛЬЗОВАТЕЛЯ **
- * 
- *   При отключении нужно уменьшить число пользователей
- *   (users[0]) на единицу
- *   Также присваиваем соответствующей ячейке
- *   (users[this_user_index]) значение -1
-* ===============================================
-*/
+
 
 void on_keyboard_interrupt(int sig)
 {
-     users[0]--;
-     users[this_user_index] = -1;
-     printf("ALL USERS: %d\n", users[0]);
-     if (users[0]==0)
+     int close = user_exit(users_shared_memory_id, users, this_user_index, msg_shared_memory_id, msg);
+     if (close == CLOSE_SHARED_MEMORY_SUCCESS)
      {
-          shmdt(users);
-          if (shmctl (users_shared_memory_id, IPC_RMID, (struct shmid_ds *) 0) < 0)
-          {
-               printf("shared memory remove error");
-          }
+          printf("!! close shared memory !!\n");
      }
-     else
+     else if (close == CLOSE_SHARED_MEMORY_ERROR)
      {
-          shmdt(users);
+          printf("could not close shared memory");
      }
      printf("bye!\n");
      exit(0);
+}
+
+void on_message_received(int sig)
+{
+
 }
