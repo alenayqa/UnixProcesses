@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <string.h>
+#include <signal.h>
 #include "shmutils.h"
 
 int users_shared_memory_getter()
@@ -50,16 +52,41 @@ int users_shared_memory_getter()
     return id;
 }
 
+int append_user(int pid, int *users)
+{
+    for (int i = 1; i <= MAX_USERS; i++)
+    {
+        if (users[i]==-1)
+        {
+            users[0]++;
+            users[i] = pid;
+            return i;
+        }
+    }
+}
+
 int msg_shared_memory_getter()
 {
-    return shmget(MSG_SHARED_MEMORY_KEY, MAX_MSGLEN * sizeof(char), PERMS | IPC_CREAT) < 0;
+    return shmget(MSG_SHARED_MEMORY_KEY, MAX_MSGLEN * sizeof(char), PERMS | IPC_CREAT);
+}
+
+void send_msg(int *users, int user_index)
+{
+    for (int i = 1, count = 0; i<=MAX_USERS && count<users[0]; i++)
+    {
+        if (users[i]!=-1 && i!=user_index)
+        {
+            kill(users[i], SIGUSR1);
+            count++;
+        }
+    }
 }
 
 int user_exit(int users_shared_memory_id, int *users, int user_index, int msg_shared_memory_id, char *msg)
 {
     users[0]--;
     users[user_index] = -1;
-    printf("users online: %d\n", users[0]);
+    printf("\nusers online: %d\n", users[0]);
     if (users[0]==0)
     {
         shmdt(users);

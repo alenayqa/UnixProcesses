@@ -5,6 +5,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <signal.h>
+#include <string.h>
 #include "shmutils.h"
 
 int this_user_index;
@@ -14,7 +15,7 @@ int *users;
 int msg_shared_memory_id;
 char *msg;
 
-void on_keyboard_interrupt(int sig);
+void on_interrupt(int sig);
 
 void on_message_received(int sig);
 
@@ -23,16 +24,20 @@ void on_message_received(int sig);
 
 int main(int argc, char *argv[])
 {
-     int _pid = getpid();
-     printf("%d\n", _pid);
-     this_user_index = 1;
+     int user_pid = getpid();
+     printf("%d\n", user_pid);
 
      // Обработка закрытия через Ctrl-C
-     signal(SIGINT, on_keyboard_interrupt);
+     signal(SIGINT, on_interrupt);
 
      // Обработка закрытия через Ctrl-Z
-     signal(SIGTSTP, on_keyboard_interrupt);
+     signal(SIGTSTP, on_interrupt);
 
+     // Аварийное завершение
+     signal(SIGABRT, on_interrupt);
+
+     
+     signal(SIGUSR1, on_message_received);
      
      // Подключение к разделяемой памяти с пользователями
      users_shared_memory_id = users_shared_memory_getter();
@@ -50,18 +55,27 @@ int main(int argc, char *argv[])
           exit(1);
      }
 
-     users[0]++;
+     // Добавление пользователя в общий список и выдача ему номера
+     this_user_index = append_user(user_pid, users);
      printf("users online: %d\n", users[0]);
-
+     char new_msg[MAX_MSGLEN];
      while (1)
      {
-          
+           fgets (new_msg, MAX_MSGLEN, stdin);
+          // scanf("%s", new_msg);
+
+          // Запись сообщения в разделяемую память
+          strcpy(msg, new_msg);
+
+          // Отправка сообщения остальным пользователям
+          send_msg(users, this_user_index);
      }
+
 }
 
 
 
-void on_keyboard_interrupt(int sig)
+void on_interrupt(int sig)
 {
      int close = user_exit(users_shared_memory_id, users, this_user_index, msg_shared_memory_id, msg);
      if (close == CLOSE_SHARED_MEMORY_SUCCESS)
@@ -70,7 +84,7 @@ void on_keyboard_interrupt(int sig)
      }
      else if (close == CLOSE_SHARED_MEMORY_ERROR)
      {
-          printf("could not close shared memory");
+          printf("could not close shared memory\n");
      }
      printf("bye!\n");
      exit(0);
@@ -78,5 +92,7 @@ void on_keyboard_interrupt(int sig)
 
 void on_message_received(int sig)
 {
-
+     signal(sig, SIG_IGN);
+     printf("%s", msg);
+     signal(sig, on_message_received);
 }
