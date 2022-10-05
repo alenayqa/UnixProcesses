@@ -31,6 +31,20 @@ int shared_memory_getter()
         }
 
         // Заполнение сегмента начальными значениями
+        int* users;
+        if ((users = (int *) shmat(id, 0, 0)) == NULL)
+        {
+            // При ошибке возвращаем -1
+            return -1;
+        }
+        users[0] = 0;
+
+        // Нумерация начинается с единицы
+        for (int i = 1; i <= MAX_USERS; i++)
+        {
+            users[i] = -1;
+        }
+        shmdt(users);
     }
     return id;
 }
