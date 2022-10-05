@@ -33,7 +33,7 @@
 * ===============================================
 */
 
-#define USERS_SHARED_MEMORY_KEY 3004
+#define USERS_SHARED_MEMORY_KEY 3003
 #define MAX_USERS 256
 
 /*
@@ -74,7 +74,7 @@ int users_shared_memory_getter();
  * 
 * ===============================================
 */
-#define MSG_SHARED_MEMORY_KEY 3004
+#define MSG_SHARED_MEMORY_KEY 4004
 #define MAX_MSGLEN 256
 
 /*
