@@ -25,7 +25,6 @@ void on_message_received(int sig);
 int main(int argc, char *argv[])
 {
      int user_pid = getpid();
-     printf("%d\n", user_pid);
 
      // Обработка закрытия через Ctrl-C
      signal(SIGINT, on_interrupt);
@@ -36,7 +35,7 @@ int main(int argc, char *argv[])
      // Аварийное завершение
      signal(SIGABRT, on_interrupt);
 
-     
+     // Прием сообщения
      signal(SIGUSR1, on_message_received);
      
      // Подключение к разделяемой памяти с пользователями
