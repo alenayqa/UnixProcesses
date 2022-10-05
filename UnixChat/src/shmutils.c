@@ -5,7 +5,6 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include "shmutils.h"
-#include "message.h"
 
 int shared_memory_getter()
 {

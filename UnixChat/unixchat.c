@@ -5,9 +5,9 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <signal.h>
-#include "message.h"
 #include "shmutils.h"
 
+int this_user_index;
 int users_shared_memory_id;
 int *users;
 
@@ -20,6 +20,7 @@ int main(int argc, char *argv[])
 {
      int _pid = getpid();
      printf("%d\n", _pid);
+     this_user_index = 1;
 
      // Обработка закрытия через Ctrl-C
      signal(SIGINT, on_keyboard_interrupt);
@@ -40,19 +41,21 @@ int main(int argc, char *argv[])
      }
 }
 
+/*
+* ===============================================
+ *   ** ОТКЛЮЧЕНИЕ ПОЛЬЗОВАТЕЛЯ **
+ * 
+ *   При отключении нужно уменьшить число пользователей
+ *   (users[0]) на единицу
+ *   Также присваиваем соответствующей ячейке
+ *   (users[this_user_index]) значение -1
+* ===============================================
+*/
+
 void on_keyboard_interrupt(int sig)
 {
-     // char  c;
-
-     // signal(sig, SIG_IGN);
-     // printf("Do you want to stop the server? [y/n]\n");
-     // c = getchar();
-     // if (c == 'y' || c == 'Y')
-     //      exit(0);
-     // else
-     //      signal(SIGINT, on_keyboard_interrupt);
-     // getchar(); // Get new line character
      users[0]--;
+     users[this_user_index] = -1;
      printf("ALL USERS: %d\n", users[0]);
      if (users[0]==0)
      {
