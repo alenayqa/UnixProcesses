@@ -14,6 +14,11 @@ int read_from_file(char *fname, double **buf)
     FILE *f;
     f = fopen(fname, "r");
 
+    if (!f)
+    {
+        return -1;
+    }
+    
     *buf = malloc(size*sizeof(double));
 
     // Читаем, пока не дошли до конца файла
