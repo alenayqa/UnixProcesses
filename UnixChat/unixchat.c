@@ -61,6 +61,8 @@ int main(int argc, char *argv[])
      }
      else
      {
+          shmdt(users);
+          shmdt(msg);
           printf("chatroom is full\n");
           exit(0);
      }
