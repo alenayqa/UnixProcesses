@@ -63,3 +63,13 @@ double** create_matrix(int flatten_matrix_size, int vector_size, double* flatten
 
     return matrix;
 }
+
+double dot(int n, double* v1, double* v2)
+{
+    double result = 0;
+    for (int i = 0; i < n; i++)
+    {
+        result += v1[i] * v2[i];
+    }
+    return result;
+}

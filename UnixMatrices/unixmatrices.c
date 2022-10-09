@@ -56,15 +56,13 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-
+    FILE* f;
+    f = fopen("output.txt", "w");
     for (int i = 0; i < rows; i++)
     {
-        for (int j = 0; j < cols; j++)
-        {
-            printf("%lf\t", matrix[i][j]);
-        }
-        printf("\n");
+        fprintf(f, "%lf\n", dot(cols, matrix[i], vector));
     }
+    fclose(f);
 
     free_memory();
     
