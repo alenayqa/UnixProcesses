@@ -91,7 +91,7 @@ int append_user(int pid, int *users);
 * ===============================================
 */
 #define MSG_SHARED_MEMORY_KEY 4004
-#define MAX_MSGLEN 256
+#define MAX_MSGLEN 8
 #define SIGMSGCHAT 5005
 
 /*

@@ -55,13 +55,31 @@ int main(int argc, char *argv[])
      }
 
      // Добавление пользователя в общий список и выдача ему номера
-     this_user_index = append_user(user_pid, users);
+     if (users[0] < MAX_USERS)
+     {
+          this_user_index = append_user(user_pid, users);
+     }
+     else
+     {
+          printf("chatroom is full\n");
+          exit(0);
+     }
      printf("users online: %d\n", users[0]);
-     char new_msg[MAX_MSGLEN];
+     
+     char *new_msg;
+     size_t len = 0;
+     ssize_t line_size;
      while (1)
      {
-           fgets (new_msg, MAX_MSGLEN, stdin);
-          // scanf("%s", new_msg);
+          // Считывание сообщения
+          line_size = getline(&new_msg, &len, stdin);
+
+          // Если длина сообщения превысила допустимый максимум
+          if (line_size > MAX_MSGLEN)
+          {
+               printf("\n!! MESSAGE IS TOO LONG !!\n\n");
+               continue;
+          }
 
           // Запись сообщения в разделяемую память
           strcpy(msg, new_msg);
