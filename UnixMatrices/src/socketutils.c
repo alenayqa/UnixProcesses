@@ -18,7 +18,7 @@ int read_from_file(char *fname, double **buf)
     {
         return -1;
     }
-    
+
     *buf = malloc(size*sizeof(double));
 
     // Читаем, пока не дошли до конца файла
@@ -37,4 +37,29 @@ int read_from_file(char *fname, double **buf)
 
     fclose(f);
     return n;
+}
+
+double** create_matrix(int flatten_matrix_size, int vector_size, double* flatten_matrix, int *rows, int *cols)
+{
+    // Проверка корректности размерности (возможно ли создать матрицу)
+    if (flatten_matrix_size % vector_size != 0)
+    {
+        return NULL;
+    }
+    *cols = vector_size;
+    *rows = flatten_matrix_size / vector_size;
+
+    // Выделение памяти под двумерный массив и его заполнение
+    double **matrix = malloc(*rows * sizeof(double*));
+    int src_index;
+    for (int i = 0; i < *rows; i++)
+    {
+        matrix[i] = malloc(*cols * sizeof(double));
+        for (int j =  0; j < *cols; j++)
+        {
+            matrix[i][j] = flatten_matrix[src_index++];
+        }
+    }
+
+    return matrix;
 }
