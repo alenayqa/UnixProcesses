@@ -1,24 +1,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <signal.h>
 #include "socketutils.h"
 
 double *vector;
 double *flatten_matrix;
 double **matrix;
 int rows=0, cols=0;
+int num_processes = 1;
+int server_socket;
 
-void free_memory()
-{
-    free(vector);
-    free(flatten_matrix);
-    for (int i = 0; i < rows; i++)
-        free(matrix[i]);
-    free(matrix);
-}
+
+void free_memory();
+
+void on_interrupt(int sig);
 
 int main(int argc, char **argv)
 {
+
+    // Обработка закрытия через Ctrl-C
+     signal(SIGINT, on_interrupt);
+
+    // Обработка закрытия через Ctrl-Z
+    signal(SIGTSTP, on_interrupt);
+
+    // Аварийное завершение
+    signal(SIGABRT, on_interrupt);
 
     // Названия файлов с матрицей и вектором подаются через аргументы командной строки
     if (argc < 3)
@@ -47,7 +59,7 @@ int main(int argc, char **argv)
     }
 
     // Создание матрицы из линейного массива
-    matrix =  create_matrix(flatten_matrix_size, vector_size, flatten_matrix, &rows, &cols);
+    matrix = create_matrix(flatten_matrix_size, vector_size, flatten_matrix, &rows, &cols);
 
     if (!matrix)
     {
@@ -56,15 +68,75 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    FILE* f;
-    f = fopen("output.txt", "w");
-    for (int i = 0; i < rows; i++)
+    // Количество запускаемых процессов подается через командную строку
+    // Если ничего не передано, то будет запускаться только 1 процесс
+    if (argc >= 4)
     {
-        fprintf(f, "%lf\n", dot(cols, matrix[i], vector));
+        num_processes = atoi(argv[4]);
+        // Не более 8 процессов
+        if (num_processes > 8) num_processes = 8;
+        // Хотя бы один процесс
+        if (num_processes <= 0) num_processes = 1;
+        // Не запускать излишние процессы
+        if (rows >= 1 && num_processes > rows)
+        {
+            num_processes = rows;
+        }
     }
-    fclose(f);
+
+    struct sockaddr_in server_address;
+    int matrix_socket;
+
+    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(9005);
+    server_address.sin_addr.s_addr = INADDR_ANY;
+
+    bind(server_socket, (struct sockaddr*) &server_address, sizeof(server_address));
+
+    listen(server_socket, 5);
+
+
+    char server_message[256] = "You have reached the server!";
+    // int client_socket = accept(server_socket, NULL, NULL);
+
+    while (1)
+    {
+        int client_socket = accept(server_socket, NULL, NULL);
+        // client_socket = accept(server_socket, NULL, NULL);
+        send(client_socket, &cols, sizeof(int), 0);
+        send(client_socket, vector, cols*sizeof(double), 0);
+
+    }
+    // FILE* f;
+    // f = fopen("output.txt", "w");
+    // for (int i = 0; i < rows; i++)
+    // {
+    //     fprintf(f, "%lf\n", dot(cols, matrix[i], vector));
+    // }
+    // fclose(f);
+
+    // system("neofetch");
 
     free_memory();
     
     return 0;
+}
+
+void free_memory()
+{
+    free(vector);
+    free(flatten_matrix);
+    for (int i = 0; i < rows; i++)
+        free(matrix[i]);
+    free(matrix);
+    close(server_socket);
+}
+
+void on_interrupt(int sig)
+{
+    free_memory();
+    printf("bye!\n");
+    exit(0);
 }
