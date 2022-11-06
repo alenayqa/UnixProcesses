@@ -8,7 +8,10 @@
 */
 
 #define MATRIX_SOCKET "matrixsocket"
-#define MATRIX_PORT 9005
+#define MATRIX_PORT 9020
+
+#define CALC_MSG 1
+#define END_MSG -1
 
 
 /*

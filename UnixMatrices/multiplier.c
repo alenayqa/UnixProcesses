@@ -15,6 +15,7 @@ int NB;
 double* vector;
 double* column;
 int network_socket;
+int process_num;
 
 void free_memory();
 
@@ -35,20 +36,56 @@ int main(int argc, char **argv)
 
     network_socket = socket(AF_INET, SOCK_STREAM, 0);
 
+    if (network_socket == -1)
+    {
+        printf("SOCKET CREATION ERROR\n");
+        close(network_socket);
+        exit(0);
+    }
+
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(MATRIX_PORT);
     server_address.sin_addr.s_addr = INADDR_ANY;
 
-    connect(network_socket, (struct sockaddr *) &server_address, sizeof(server_address));
+    // Подключение к серверу
+    if (connect(network_socket, (struct sockaddr *) &server_address, sizeof(server_address)) == -1)
+    {
+        printf("CLIENT CONNECTION ERROR\n");
+        close(network_socket);
+        exit(0);
+    }
 
+    // Получение начальных данных - вектор и его размер
     recv(network_socket, &n, sizeof(int), 0);
     vector = malloc(n*sizeof(double));
     column = malloc(n*sizeof(double));
     recv(network_socket, vector, n*sizeof(double), 0);
-    for (int i = 0; i < n; i++)
+
+
+    double result;
+    int msg;
+    while (1)
     {
-        printf("%lf\n", *(vector + i));
+        recv(network_socket, &msg, sizeof(int), 0);
+        if (msg == CALC_MSG)
+        {
+            recv(network_socket, column, n*sizeof(double), 0);
+            result = dot(n, vector, column);
+            send(network_socket, &result, sizeof(double), 0);
+        }
+        else
+        {
+            printf("bye!\n");
+            break;
+        }
     }
+    
+    // while ( (NB = read(network_socket, column, n*sizeof(double))) > 0)
+    // {
+    //     result = dot(n, vector, column);
+    //     send(network_socket, &result, sizeof(double), 0);
+    // }
+
 
     free_memory();
 }
