@@ -8,6 +8,7 @@
 */
 
 #define MATRIX_SOCKET "matrixsocket"
+#define MATRIX_PORT 9005
 
 
 /*

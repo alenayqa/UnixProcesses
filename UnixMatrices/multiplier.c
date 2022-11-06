@@ -14,7 +14,7 @@ int n;
 int NB;
 double* vector;
 double* column;
-int client_socket;
+int network_socket;
 
 void free_memory();
 
@@ -33,23 +33,22 @@ int main(int argc, char **argv)
 
     struct sockaddr_in server_address;
 
-    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    network_socket = socket(AF_INET, SOCK_STREAM, 0);
 
     server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(9005);
+    server_address.sin_port = htons(MATRIX_PORT);
     server_address.sin_addr.s_addr = INADDR_ANY;
 
-    connect(client_socket, (struct sockaddr *) &server_address, sizeof(server_address));
+    connect(network_socket, (struct sockaddr *) &server_address, sizeof(server_address));
 
-    recv(client_socket, &n, sizeof(int), 0);
+    recv(network_socket, &n, sizeof(int), 0);
     vector = malloc(n*sizeof(double));
     column = malloc(n*sizeof(double));
-    recv(client_socket, vector, n*sizeof(double), 0);
+    recv(network_socket, vector, n*sizeof(double), 0);
     for (int i = 0; i < n; i++)
     {
         printf("%lf\n", *(vector + i));
     }
-
 
     free_memory();
 }
@@ -64,5 +63,5 @@ void free_memory()
 {
     free(vector);
     free(column);
-    close(client_socket);
+    close(network_socket);
 }

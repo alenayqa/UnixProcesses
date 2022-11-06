@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <signal.h>
+#include <pthread.h>
 #include "socketutils.h"
 
 double *vector;
@@ -14,6 +15,15 @@ double **matrix;
 int rows=0, cols=0;
 int num_processes = 1;
 int server_socket;
+
+void *server_thread(void *vargp)
+{
+    // Отправка клиенту начальных данных - вектор и его размер
+    int client_socket = *((int *)vargp);
+    send(client_socket, &cols, sizeof(int), 0);
+    send(client_socket, vector, cols*sizeof(double), 0);
+ 
+}
 
 
 void free_memory();
@@ -90,7 +100,7 @@ int main(int argc, char **argv)
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
     server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(9005);
+    server_address.sin_port = htons(MATRIX_PORT);
     server_address.sin_addr.s_addr = INADDR_ANY;
 
     bind(server_socket, (struct sockaddr*) &server_address, sizeof(server_address));
@@ -103,10 +113,13 @@ int main(int argc, char **argv)
 
     while (1)
     {
+        // При подключении нового пользователя выделяем ему поток
         int client_socket = accept(server_socket, NULL, NULL);
+        pthread_t thread_id;
+        pthread_create(&thread_id, NULL, server_thread, (void*)&client_socket);
         // client_socket = accept(server_socket, NULL, NULL);
-        send(client_socket, &cols, sizeof(int), 0);
-        send(client_socket, vector, cols*sizeof(double), 0);
+        // send(client_socket, &cols, sizeof(int), 0);
+        // send(client_socket, vector, cols*sizeof(double), 0);
 
     }
     // FILE* f;
@@ -132,6 +145,7 @@ void free_memory()
         free(matrix[i]);
     free(matrix);
     close(server_socket);
+
 }
 
 void on_interrupt(int sig)
