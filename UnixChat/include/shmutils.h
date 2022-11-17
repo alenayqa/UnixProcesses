@@ -1,6 +1,9 @@
 #ifndef SHMUTILS_H
 #define SHMUTILS_H
 
+#include <sys/sem.h>
+#include <sys/types.h>
+
 // Права доступа
 #define PERMS	0666
 
@@ -33,7 +36,7 @@
 * ===============================================
 */
 
-#define USERS_SHARED_MEMORY_KEY 3003
+#define USERS_SHARED_MEMORY_KEY 2004
 #define MAX_USERS 256
 
 /*
@@ -59,7 +62,7 @@
  *   
 * ===============================================
 */
-int users_shared_memory_getter();
+int users_shared_memory_getter(int semid);
 
 /*
 * ===============================================
@@ -90,8 +93,8 @@ int append_user(int pid, int *users);
  * 
 * ===============================================
 */
-#define MSG_SHARED_MEMORY_KEY 4004
-#define MAX_MSGLEN 8
+#define MSG_SHARED_MEMORY_KEY 1001
+#define MAX_MSGLEN 256
 #define SIGMSGCHAT 5005
 
 /*
@@ -112,7 +115,7 @@ int msg_shared_memory_getter();
 /*
 * ===============================================
  *  ** ОТПРАВКА СООБЩЕНИЙ **
- * 
+ *
  *  Проходим по списку пользователей
  *  Во всех ячейках, значение которых
  *  не равно -1, хранятся pid пользователей
@@ -122,7 +125,7 @@ int msg_shared_memory_getter();
  * 
 * ===============================================
 */
-void send_msg(int *users, int user_index);
+void send_msg(int *users, int user_index, int semid);
 
 /*
 * ===============================================

@@ -8,7 +8,7 @@
 #include <signal.h>
 #include "shmutils.h"
 
-int users_shared_memory_getter()
+int users_shared_memory_getter(int semid)
 {
     int id;
     // Получение доступа БЕЗ СОЗДАНИЯ
@@ -70,9 +70,21 @@ int msg_shared_memory_getter()
     return shmget(MSG_SHARED_MEMORY_KEY, MAX_MSGLEN * sizeof(char), PERMS | IPC_CREAT);
 }
 
-void send_msg(int *users, int user_index)
+void send_msg(int *users, int user_index, int semid)
 {
-    for (int i = 1, count = 0; i<=MAX_USERS && count<users[0]; i++)
+    for (int i = 1, count = 0; i<MAX_USERS && count<users[0]; i++)
+    {
+        // При отправке семафоры блокируются, следующая отправка будет возможна, когда все процессы освободят свой семафор
+        if (users[i]!=-1 && i!=user_index)
+        {
+            struct sembuf sem_lock;
+	        sem_lock.sem_num = i;
+	        sem_lock.sem_op = 1;
+	        sem_lock.sem_flg = SEM_UNDO;
+            semop(semid, &sem_lock, 1);
+        }
+    }
+    for (int i = 1, count = 0; i<MAX_USERS && count<users[0]; i++)
     {
         if (users[i]!=-1 && i!=user_index)
         {
