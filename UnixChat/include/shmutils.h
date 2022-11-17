@@ -36,7 +36,7 @@
 * ===============================================
 */
 
-#define USERS_SHARED_MEMORY_KEY 2004
+#define USERS_SHARED_MEMORY_KEY 2202
 #define MAX_USERS 256
 
 /*

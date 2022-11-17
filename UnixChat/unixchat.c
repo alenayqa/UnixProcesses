@@ -6,7 +6,11 @@
 #include <sys/shm.h>
 #include <signal.h>
 #include <string.h>
+#include <pthread.h>
 #include "shmutils.h"
+#include <ncurses.h>
+#include <ctype.h>
+
 
 int this_user_index;
 int users_shared_memory_id;
@@ -15,17 +19,37 @@ int semid;
 
 int msg_shared_memory_id;
 char *msg;
+int user_pid;
 
 void on_interrupt(int sig);
 
 void on_message_received(int sig);
 
+void screen_quit(void)
+{
+    endwin();
+}
+
+
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
+#define ESC 27
+#define ENTER 10
 
 
 
 int main(int argc, char *argv[])
 {
-     int user_pid = getpid();
+     // Иницаиализация терминала
+     initscr();
+     keypad(stdscr, TRUE);
+     // Callback на выход (завершение)
+     atexit(screen_quit);
+     // Разрешить прокрутку терминала
+     scrollok(stdscr, TRUE);
+
+     user_pid = getpid();
 
      // Обработка закрытия через Ctrl-C
      signal(SIGINT, on_interrupt);
@@ -40,13 +64,14 @@ int main(int argc, char *argv[])
      signal(SIGUSR1, on_message_received);
      
      // Создание массива семафоров
-     semid = semget(2015, MAX_USERS, IPC_CREAT | 0666);
+     semid = semget(2018, MAX_USERS, IPC_CREAT | 0666);
      // Подключение к разделяемой памяти с пользователями
      users_shared_memory_id = users_shared_memory_getter(semid);
 
      if (users_shared_memory_id == -1 || (users = (int *) shmat(users_shared_memory_id, 0, 0)) == NULL)
      {
-          printf("couldn't get shared memory\n");
+          printw("couldn't get shared memory\n");
+          refresh();
           exit(1);
      }
 
@@ -54,7 +79,8 @@ int main(int argc, char *argv[])
      msg_shared_memory_id = msg_shared_memory_getter();
      if (msg_shared_memory_id == -1 || (msg = (char *)shmat(msg_shared_memory_id, 0, 0)) == NULL)
      {
-          printf("couldn't get shared memory\n");
+          printw("couldn't get shared memory\n");
+          refresh();
           exit(1);
      }
 
@@ -67,44 +93,89 @@ int main(int argc, char *argv[])
      {
           shmdt(users);
           shmdt(msg);
-          printf("chatroom is full\n");
+          printw("chatroom is full\n");
+          refresh();
           exit(0);
      }
-     printf("users online: %d\n", users[0]);
      
-     char *new_msg;
+     char new_msg[MAX_MSGLEN];
      size_t len = 0;
      ssize_t line_size;
+     int key;
+     int cur_msg_len = 0;
+
      while (1)
      {
-          // Считывание сообщения
-          line_size = getline(&new_msg, &len, stdin);
-
-          // Если длина сообщения превысила допустимый максимум
-          if (line_size > MAX_MSGLEN)
+          // Чтение символа
+          key = getch();
+          // Если был нажат ENTER, то фиксируем накопленное сообщение и сбрасываем его
+          if (key==ENTER)
           {
-               printf("\n!! MESSAGE IS TOO LONG !!\n\n");
-               continue;
-          }
+               if (cur_msg_len >= MAX_MSGLEN)
+               {
+                    printw("\n!! MESSAGE IS TOO LONG !!\n\n");
+                    cur_msg_len = 0;
+                    new_msg[0] = '\0';
+                    refresh();
+                    continue;
+               }
+               new_msg[cur_msg_len]='\0';
+               printw(new_msg);
+               printw("\n");
+               refresh();
 
-          // Ожидание остальных процессов, пока они не прочитают сообщение
-          for (int i = 1; i < MAX_USERS; i++)
+               if (cur_msg_len > 0)
+               {
+                    // Ожидание остальных процессов, пока они не прочитают сообщение
+                    for (int i = 1; i < MAX_USERS; i++)
+                    {
+                         if (users[i]==-1 || i==this_user_index) continue;
+                         struct sembuf sem_wait;
+	                    sem_wait.sem_num = i;
+	                    sem_wait.sem_op = 0;
+	                    sem_wait.sem_flg = 0;
+                         semop(semid, &sem_wait, 1);
+                    }
+
+                    // Запись сообщения в разделяемую память
+                    strcpy(msg, new_msg);
+
+                    // Отправка сообщения остальным пользователям
+                    send_msg(users, this_user_index, semid);
+               }
+               cur_msg_len = 0;
+          }
+          // Если был нажат BACKSPACE, то освобождаем последнюю позицию
+          else if (key==KEY_BACKSPACE)
           {
-               if (users[i]==-1 || i==this_user_index) continue;
-               struct sembuf sem_wait;
-	          sem_wait.sem_num = i;
-	          sem_wait.sem_op = 0;
-	          sem_wait.sem_flg = 0;
-               semop(semid, &sem_wait, 1);
+               cur_msg_len = MAX(cur_msg_len-1, 0);
+               if (cur_msg_len < MAX_MSGLEN)
+               {
+                    new_msg[cur_msg_len] = '\0';
+               }
+               // Удаляем последний введенный символ прямо из терминала
+               wdelch(stdscr);
           }
-
-          // Запись сообщения в разделяемую память
-          strcpy(msg, new_msg);
-
-          // Отправка сообщения остальным пользователям
-          send_msg(users, this_user_index, semid);
+          // Иначе добавляем введенный символ
+          else if (isprint(key))
+          {
+               if (cur_msg_len < MAX_MSGLEN - 1)
+               {
+                    new_msg[cur_msg_len] = key;
+               }
+               cur_msg_len++;
+               if (cur_msg_len < MAX_MSGLEN)
+               {
+                    new_msg[cur_msg_len] = '\0';
+               }
+          }
+          else if (key==ESC)
+          {
+               kill(user_pid, SIGINT);
+          }
+          refresh();
      }
-
+     
 }
 
 
@@ -115,13 +186,15 @@ void on_interrupt(int sig)
      if (close == CLOSE_SHARED_MEMORY_SUCCESS)
      {
           semctl(semid, IPC_RMID, 0);
-          printf("!! close shared memory !!\n");
+          printw("!! close shared memory !!\n");
+          refresh();
      }
      else if (close == CLOSE_SHARED_MEMORY_ERROR)
      {
-          printf("could not close shared memory\n");
+          printw("could not close shared memory\n");
+          refresh();
      }
-     printf("bye!\n");
+     printw("bye!\n");
      exit(0);
 }
 
@@ -135,6 +208,8 @@ void on_message_received(int sig)
 	sem_release.sem_flg = 0;
      semop(semid, &sem_release, 1);
 
-     printf("%s", msg);
+     printw(msg);
+     printw("\n");
+     refresh();
      signal(sig, on_message_received);
 }
