@@ -41,7 +41,6 @@ int main(int argc, char *argv[])
      
      // Создание массива семафоров
      semid = semget(2015, MAX_USERS, IPC_CREAT | 0666);
-     printf("SEM %d\n", semid);
      // Подключение к разделяемой памяти с пользователями
      users_shared_memory_id = users_shared_memory_getter(semid);
 
@@ -72,7 +71,6 @@ int main(int argc, char *argv[])
           exit(0);
      }
      printf("users online: %d\n", users[0]);
-     printf("SEM INFO start %d %d\n",semctl(semid, this_user_index, GETVAL), this_user_index);
      
      char *new_msg;
      size_t len = 0;
