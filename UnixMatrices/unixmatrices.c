@@ -251,7 +251,7 @@ void free_memory()
 
 void on_interrupt(int sig)
 {
-    // free_memory();
+    free_memory();
     printf("bye!\n");
     exit(0);
 }
